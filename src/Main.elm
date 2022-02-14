@@ -22,8 +22,8 @@ type alias Model =
 
 type alias TimeoutPolicy =
     { entryPointName : String
-    , timeUnit : String
-    , value : Int
+    , hours : Int
+    , minutes : Int
     }
 
 
@@ -114,51 +114,9 @@ decodeIncomingJson model =
     { model | timeoutPolicy = newTimeout, jsonError = err }
 
 
-
----- This parses
----- { "hours": 48 }
---decoderTimeoutPolicy : Decoder TimeoutPolicy
---decoderTimeoutPolicy =
---    Decode.succeed TimeoutPolicy
---        |> Pipeline.hardcoded "*"
---        |> Pipeline.hardcoded "hours"
---        |> Pipeline.requiredAt [ "hours" ] Decode.int
-
-
 decoderTimeoutPolicy : Decoder TimeoutPolicy
-
-
-
--- This parses
--- { "hours": 48 }
--- or
--- { "minutes": 60 }
-
-
 decoderTimeoutPolicy =
-    Decode.oneOf
-        [ Decode.succeed TimeoutPolicy
-            |> Pipeline.hardcoded "*"
-            |> Pipeline.hardcoded "hours"
-            |> Pipeline.requiredAt [ "hours" ] Decode.int
-        , Decode.succeed TimeoutPolicy
-            |> Pipeline.hardcoded "*"
-            |> Pipeline.hardcoded "minutes"
-            |> Pipeline.requiredAt [ "minutes" ] Decode.int
-        ]
-
-
-
---decoderTimeoutPolicy : Decoder TimeoutPolicy
---decoderTimeoutPolicy =
---    Decode.value
---        |> Decode.andThen
---            (\value ->
---                Decode.decodeValue
---                    (Decode.succeed TimeoutPolicy
---                        |> Pipeline.hardcoded "*"
---                        |> Pipeline.hardcoded "hours"
---                        |> Pipeline.requiredAt [ "hours" ] Decode.int
---                    )
---                    value
---            )
+    Decode.succeed TimeoutPolicy
+        |> Pipeline.hardcoded "*"
+        |> Pipeline.optionalAt [ "hours" ] Decode.int 0
+        |> Pipeline.optionalAt [ "minutes" ] Decode.int 0
