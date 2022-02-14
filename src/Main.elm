@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Browser
 import Debug exposing (toString)
+import Dict
 import Html exposing (Html, br, button, div, h1, img, pre, text, textarea)
 import Html.Attributes exposing (cols, rows, src, value)
 import Html.Events exposing (onClick, onInput)
@@ -16,7 +17,7 @@ import Json.Decode.Pipeline as Pipeline exposing (optional, required)
 type alias Model =
     { incomingJson : String
     , jsonError : Maybe String
-    , timeoutPolicy : Maybe TimeoutPolicy
+    , timeoutPolicy : List TimeoutPolicy
     }
 
 
@@ -27,11 +28,17 @@ type alias TimeoutPolicy =
     }
 
 
+type alias TimeoutPolicyTime =
+    { hours : Int
+    , minutes : Int
+    }
+
+
 init : ( Model, Cmd Msg )
 init =
     ( { incomingJson = ""
       , jsonError = Nothing
-      , timeoutPolicy = Nothing
+      , timeoutPolicy = []
       }
     , Cmd.none
     )
@@ -101,7 +108,7 @@ decodeIncomingJson model =
                 True ->
                     case Decode.decodeString decoderTimeoutPolicy json of
                         Ok timeout ->
-                            ( Just timeout, Nothing )
+                            ( Dict.values timeout, Nothing )
 
                         Err e ->
                             ( model.timeoutPolicy
@@ -114,9 +121,18 @@ decodeIncomingJson model =
     { model | timeoutPolicy = newTimeout, jsonError = err }
 
 
-decoderTimeoutPolicy : Decoder TimeoutPolicy
+decoderTimeoutPolicy : Decoder (Dict.Dict String TimeoutPolicy)
 decoderTimeoutPolicy =
-    Decode.succeed TimeoutPolicy
-        |> Pipeline.hardcoded "*"
+    Decode.map (Dict.map timeToPolicy) (Decode.dict decoderTimeoutPolicyTime)
+
+
+timeToPolicy : String -> TimeoutPolicyTime -> TimeoutPolicy
+timeToPolicy entryPoint { hours, minutes } =
+    TimeoutPolicy entryPoint hours minutes
+
+
+decoderTimeoutPolicyTime : Decoder TimeoutPolicyTime
+decoderTimeoutPolicyTime =
+    Decode.succeed TimeoutPolicyTime
         |> Pipeline.optionalAt [ "hours" ] Decode.int 0
         |> Pipeline.optionalAt [ "minutes" ] Decode.int 0
